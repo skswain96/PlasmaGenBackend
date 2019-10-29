@@ -213,7 +213,7 @@ app.post("/api/survey1/deal", (req, res) => {
   }
 });
 
-const PORT = 5000;
+const PORT = 3000;
 
 app.listen(PORT, () => {
   console.log(`server running on port ${PORT}`);
