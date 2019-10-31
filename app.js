@@ -1,18 +1,27 @@
 import express from "express";
+import cors from "cors";
 import bodyParser from "body-parser";
 import firebase from "firebase";
 import * as admin from "firebase-admin";
 import nodemailer from "nodemailer";
+import msg91 from "msg91-sms";
+import voucher_codes from "voucher-code-generator";
 
-const accountSid = "ACffe9c4ee1633d02a303b58c0b751bfb2";
-const authToken = "48b8b0792d8ac524757678014d4e7835";
-const client = require("twilio")(accountSid, authToken);
+var authkey = "233012AosSPkY6Ua5b7c55a0";
+var dialcode = "91";
+var route = 4;
+var senderid = "PLASMA";
 
 import serviceAccount from "./plasmagendb-85c2a-firebase-adminsdk-991zp-a1ba6c789c.json";
 
 const app = express(); // get all todos
 
+var corsOptions = {
+  origin: "http://127.0.0.1:3000",
+  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
 // Parse incoming requests data
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -36,7 +45,6 @@ app.all("/*", function(req, res, next) {
 // send email function
 
 function Mailer(email, name, res) {
-  console.log(email, name);
   let transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -66,27 +74,22 @@ function Mailer(email, name, res) {
 // send SMS function
 
 function SendSMS(phone, name, res) {
-  client.messages
-    .create({
-      body: "Hello" + name + ". How are you?",
-      from: "+15005550006",
-      to: "+91" + phone
-    })
-    .then(message => {
-      console.log(message);
-      res.status(200).send({
-        name: name,
-        phone: phone,
-        message: message
-      });
-    })
-    .catch(err => {
-      console.log(err);
-      res.status(400).send({
-        status: "false",
-        message: "failed"
-      });
-    });
+  const coupon = voucher_codes.generate({
+    length: 4,
+    count: 1,
+    prefix: "PG-",
+    charset: voucher_codes.charset("alphanumeric")
+  });
+
+  var message = `Hello ${name}, your Coupon code is ${coupon}`;
+  msg91.sendOne(authkey, phone, message, senderid, route, dialcode, function(
+    response
+  ) {
+    //Returns Message ID, If Sent Successfully or the appropriate Error Message
+    console.log("***********************");
+    console.log(response);
+    console.log("***********************");
+  });
 }
 
 // All Routes
@@ -112,6 +115,13 @@ app.post("/api/survey1/form", (req, res) => {
   const name = req.body.name;
   const email = req.body.email;
   const phone = req.body.phone;
+  const speciality = req.body.speciality;
+  const hospital = req.body.hospital;
+  const city = req.body.city;
+  // const gameLevel = req.body.phone;
+  // const time = req.body.time;
+  // const position = req.body.position;
+  // const coupon = req.body.coupon;
 
   if (!name) {
     return res.status(400).send({
@@ -130,19 +140,58 @@ app.post("/api/survey1/form", (req, res) => {
     });
   }
 
-  const referencePath = "/users/";
-  const ref = firebase.database().ref(referencePath);
+  const ref = firebase.database().ref("/data/");
 
   const UserData = {
     name: name,
     email: email,
     phone: phone,
-    gameLevel: null,
-    time: null,
-    position: null
+    speciality: speciality,
+    gameLevel: "",
+    time: "",
+    position: "",
+    hospital: "",
+    city: ""
   };
 
-  ref.push(UserData, function(error) {
+  ref.child("users").push(UserData, function(error) {
+    if (error) {
+      res.send("Data could not be updated." + error);
+    } else {
+      Mailer(email, name, res);
+      SendSMS(phone, name, res);
+      return res.status(201).send({
+        success: "true",
+        message: "User Data added successfully",
+        UserData
+      });
+    }
+  });
+});
+
+// POST || EXTRA FORM
+
+app.post("/api/survey1/extraform", (req, res) => {
+  const hospital = req.body.hospital;
+  const city = req.body.city;
+  // const position = req.body.position;
+  // const coupon = req.body.coupon;
+  const referencePath = "/data/ExtraUsers/";
+  const ref = firebase.database().ref(referencePath);
+
+  var myRef = firebase
+    .database()
+    .ref(referencePath)
+    .push();
+  var key = myRef.key;
+
+  const UserData = {
+    id: key,
+    hospital: hospital,
+    city: city
+  };
+
+  myRef.push(UserData, function(error) {
     if (error) {
       res.send("Data could not be updated." + error);
     } else {
@@ -153,6 +202,18 @@ app.post("/api/survey1/form", (req, res) => {
       });
     }
   });
+
+  // .update(UserData, function(error) {
+  //   if (error) {
+  //     res.send("Data could not be updated." + error);
+  //   } else {
+  //     return res.status(201).send({
+  //       success: "true",
+  //       message: "User Data added successfully",
+  //       UserData
+  //     });
+  //   }
+  // });
 });
 
 // POST || Game Level
@@ -209,7 +270,7 @@ app.post("/api/survey1/deal", (req, res) => {
     });
   } else {
     Mailer(email, name, res);
-    //SendSMS(phone, name, res);
+    SendSMS(phone, name, res);
   }
 });
 
