@@ -260,6 +260,8 @@ app.post("/api/survey1/gamelevel", (req, res) => {
 //   }
 // });
 
+//     // "start": "nodemon app.js --exec babel-node --"
+
 const PORT = 3000;
 
 app.listen(process.env.PORT || 3000, () => {
