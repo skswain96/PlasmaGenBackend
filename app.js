@@ -73,23 +73,50 @@ function Mailer(email, name, res) {
 
 // send SMS function
 
-function SendSMS(phone, name, res) {
-  const coupon = voucher_codes.generate({
-    length: 4,
-    count: 1,
-    prefix: "PG-",
-    charset: voucher_codes.charset("alphanumeric")
-  });
+function SendSMS(phone, name, isMCQ, res) {
+  if (isMCQ === true) {
+    const coupon = voucher_codes.generate({
+      length: 3,
+      count: 1,
+      prefix: "PGBPU",
+      charset: voucher_codes.charset("numbers")
+    });
 
-  var message = `Hello ${name}, your Coupon code is ${coupon}`;
-  msg91.sendOne(authkey, phone, message, senderid, route, dialcode, function(
-    response
-  ) {
-    //Returns Message ID, If Sent Successfully or the appropriate Error Message
-    console.log("***********************");
-    console.log(response);
-    console.log("***********************");
-  });
+    const message = `Thank you for visiting our stall, B-20. We hope you enjoyed the visit, coz we definitely did!
+  
+Your lucky coupon is ${coupon}
+  
+Please hold onto this message. PlasmaGen BioSciences wishes you the best for the lucky draw! Fingers crossed.`;
+
+    msg91.sendOne(authkey, phone, message, senderid, route, dialcode, function(
+      response
+    ) {
+      //Returns Message ID, If Sent Successfully or the appropriate Error Message
+      console.log(response);
+    });
+  } else {
+    const coupon = voucher_codes.generate({
+      length: 3,
+      count: 1,
+      prefix: "PGBCO",
+      charset: voucher_codes.charset("numeric")
+    });
+
+    const message = `Thank you for visiting our stall, B-20. We hope you enjoyed the visit, coz we definitely did!
+  
+Your lucky coupon is ${coupon}
+  
+Please hold onto this message. PlasmaGen BioSciences wishes you the best for the lucky draw! Fingers crossed.`;
+
+    msg91.sendOne(authkey, phone, message, senderid, route, dialcode, function(
+      response
+    ) {
+      //Returns Message ID, If Sent Successfully or the appropriate Error Message
+      console.log(response);
+    });
+  }
+
+  //var message = `Hello ${name}, your Coupon code is `;
 }
 
 // All Routes
@@ -118,6 +145,7 @@ app.post("/api/survey1/form", (req, res) => {
   const speciality = req.body.speciality;
   const hospital = req.body.hospital;
   const city = req.body.city;
+  const isMCQ = req.body.isMCQ;
   // const gameLevel = req.body.phone;
   // const time = req.body.time;
   // const position = req.body.position;
@@ -150,8 +178,9 @@ app.post("/api/survey1/form", (req, res) => {
     gameLevel: "",
     time: "",
     position: "",
-    hospital: "",
-    city: ""
+    hospital: hospital,
+    city: city,
+    isMCQ: isMCQ
   };
 
   ref.child("users").push(UserData, function(error) {
@@ -159,7 +188,7 @@ app.post("/api/survey1/form", (req, res) => {
       res.send("Data could not be updated." + error);
     } else {
       Mailer(email, name, res);
-      SendSMS(phone, name, res);
+      SendSMS(phone, name, isMCQ, res);
       return res.status(201).send({
         success: "true",
         message: "User Data added successfully",
@@ -167,53 +196,6 @@ app.post("/api/survey1/form", (req, res) => {
       });
     }
   });
-});
-
-// POST || EXTRA FORM
-
-app.post("/api/survey1/extraform", (req, res) => {
-  const hospital = req.body.hospital;
-  const city = req.body.city;
-  // const position = req.body.position;
-  // const coupon = req.body.coupon;
-  const referencePath = "/data/ExtraUsers/";
-  const ref = firebase.database().ref(referencePath);
-
-  var myRef = firebase
-    .database()
-    .ref(referencePath)
-    .push();
-  var key = myRef.key;
-
-  const UserData = {
-    id: key,
-    hospital: hospital,
-    city: city
-  };
-
-  myRef.push(UserData, function(error) {
-    if (error) {
-      res.send("Data could not be updated." + error);
-    } else {
-      return res.status(201).send({
-        success: "true",
-        message: "User Data added successfully",
-        UserData
-      });
-    }
-  });
-
-  // .update(UserData, function(error) {
-  //   if (error) {
-  //     res.send("Data could not be updated." + error);
-  //   } else {
-  //     return res.status(201).send({
-  //       success: "true",
-  //       message: "User Data added successfully",
-  //       UserData
-  //     });
-  //   }
-  // });
 });
 
 // POST || Game Level
@@ -248,34 +230,34 @@ app.post("/api/survey1/gamelevel", (req, res) => {
 
 // POST || Send Email and Phone
 
-app.post("/api/survey1/deal", (req, res) => {
-  const email = req.body.email;
-  const name = req.body.name;
-  const phone = req.body.phone;
+// app.post("/api/survey1/deal", (req, res) => {
+//   const email = req.body.email;
+//   const name = req.body.name;
+//   const phone = req.body.phone;
 
-  if (!name) {
-    return res.status(400).send({
-      success: "false",
-      message: "name is required"
-    });
-  } else if (!email) {
-    return res.status(400).send({
-      success: "false",
-      message: "email is required"
-    });
-  } else if (!phone) {
-    return res.status(400).send({
-      success: "false",
-      message: "phone is required"
-    });
-  } else {
-    Mailer(email, name, res);
-    SendSMS(phone, name, res);
-  }
-});
+//   if (!name) {
+//     return res.status(400).send({
+//       success: "false",
+//       message: "name is required"
+//     });
+//   } else if (!email) {
+//     return res.status(400).send({
+//       success: "false",
+//       message: "email is required"
+//     });
+//   } else if (!phone) {
+//     return res.status(400).send({
+//       success: "false",
+//       message: "phone is required"
+//     });
+//   } else {
+//     Mailer(email, name, res);
+//     SendSMS(phone, name, res);
+//   }
+// });
 
 const PORT = 3000;
 
-app.listen(PORT, () => {
+app.listen(process.env.PORT || PORT, () => {
   console.log(`server running on port ${PORT}`);
 });
