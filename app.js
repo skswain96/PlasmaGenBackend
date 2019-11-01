@@ -123,6 +123,10 @@ Please hold onto this message. PlasmaGen BioSciences wishes you the best for the
 
 // GET || fetch basic user details
 
+app.get("/", (req, res) => {
+  res.send("Welcome to PlasmaGen");
+});
+
 app.get("/api/survey1/form", (req, res) => {
   const userReference = firebase.database().ref();
 
